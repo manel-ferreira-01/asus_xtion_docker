@@ -2,8 +2,8 @@
 
 # to compile
 
-mkdir build
-cd build
-cmake ..
-make
+mkdir build \
+cd build \
+cmake .. \
+make \
 ./OpenNI2_OpenCV
