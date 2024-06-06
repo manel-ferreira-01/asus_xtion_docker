@@ -1,12 +1,16 @@
 # asus_xtion_docker
 
+# requisites
+
+    sudo apt install libopenni2-dev
+
 # to compile
 
-mkdir build \
-cd build \
-cmake .. \
-make \
-./OpenNI2_OpenCV
+    mkdir build \
+    cd build \
+    cmake .. \
+    make \
+    ./OpenNI2_OpenCV
 
 
 # from openni2 doc to use mutliple cameras - NOT DONE YET
