@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(OpenNI2_OpenCV)
 
 # Set the path to OpenNI2
-set(OPENNI2_DIR "" CACHE PATH "Path to the OpenNI2 directory")
+set(OPENNI2_DIR "/usr/include/openni2" PATH "Path to the OpenNI2 directory")
 
 if(NOT OPENNI2_DIR)
     message(FATAL_ERROR "Please set the OPENNI2_DIR variable to the path to your OpenNI2 installation.")
