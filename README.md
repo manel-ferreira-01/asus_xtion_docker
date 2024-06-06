@@ -4,6 +4,8 @@
 
     sudo apt install libopenni2-dev
 
+    docker still WIP
+
 # to compile
 
     mkdir build \
