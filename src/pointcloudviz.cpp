@@ -39,7 +39,7 @@ PointcloudViz::~PointcloudViz()
 void PointcloudViz::run()
 {
     // Main Loop
-    while( !viewer.wasStopped() ){
+    while( !viewers[0].wasStopped() ){
         // Update Data
         update();
 
@@ -69,8 +69,6 @@ void PointcloudViz::initialize()
     // Initialize Device
     initializeDevice();
 
-    showSensorData();
-
     // Initialize Color
     initializeColor();
 
@@ -79,49 +77,125 @@ void PointcloudViz::initialize()
 
     // Initialize Point Cloud
     initializeViewer();
+
+    printf("innited all\n");
+
+    depth_frames.resize(deviceList.size());
+    color_frames.resize(deviceList.size());
+
 }
 
 // Initialize Device
 inline void PointcloudViz::initializeDevice()
-{
-    // Open Device
-    OPENNI_CHECK( device.open( openni::ANY_DEVICE ) );
+{   
+
+    // check what devices are available
+    openni::Array<openni::DeviceInfo> deviceListInfo;
+    openni::OpenNI::enumerateDevices(&deviceListInfo);
+    
+    //print devices
+    for (int i = 0; i < deviceListInfo.getSize(); i++)
+    {
+        printf("Device %i: %s\n", i, deviceListInfo[i].getName());
+    }
+    
+
+    // Open all devices
+    for (int i = 0; i < deviceListInfo.getSize(); i++)
+    {
+        openni::Device* device = new openni::Device;
+        OPENNI_CHECK(device->open(deviceListInfo[i].getUri()));
+        deviceList.push_back(device);
+    }
+    
+
+    printf("innited everything\n");
 }
 
 // Initialize Depth
 inline void PointcloudViz::initializeDepth()
 {
-    // Create Stream
-    OPENNI_CHECK( depth_stream.create( device, openni::SENSOR_DEPTH ) );
-
-    // Start Stream
-    OPENNI_CHECK( depth_stream.start() );
 
 
-    OPENNI_CHECK( depth_stream.start() );
+    for (int i = 0; i < deviceList.size(); i++)
+    {
 
+        const openni::SensorInfo* sinfo = deviceList[i]->getSensorInfo(openni::SENSOR_DEPTH); 
+        const openni::Array< openni::VideoMode>& modesDepth = sinfo->getSupportedVideoModes();
 
+        // Create Stream
+        openni::VideoStream* depth_stream = new openni::VideoStream;
+        OPENNI_CHECK( depth_stream->create( *deviceList[i], openni::SENSOR_DEPTH ) );
+
+        // Set Video Mode
+        showSensorData(modesDepth);
+        std::cout << "Select Depth Mode: ";
+        int mode;
+        std::cin >> mode;
+
+        OPENNI_CHECK( depth_stream->setVideoMode( modesDepth[mode] ) );
+
+        // Start Stream
+        OPENNI_CHECK( depth_stream->start() );
+
+        depthStreamsList.push_back(depth_stream);
+
+    }
+
+    printf("innited depth\n");
+    
 }
 
 // Initialize Color
 inline void PointcloudViz::initializeColor()
 {
-    // Create Stream
-    OPENNI_CHECK( color_stream.create( device, openni::SENSOR_COLOR ) );
 
-    // Start Stream
-    OPENNI_CHECK( color_stream.start() );
+    for (int i = 0; i < deviceList.size(); i++)
+    {
+
+        const openni::SensorInfo* sinfo = deviceList[i]->getSensorInfo(openni::SENSOR_COLOR); 
+        const openni::Array< openni::VideoMode>& modesColor = sinfo->getSupportedVideoModes();
+
+        // Create Stream
+        openni::VideoStream* color_stream = new openni::VideoStream;
+        OPENNI_CHECK( color_stream->create( *deviceList[i], openni::SENSOR_COLOR ) );
+
+        // Set Video Mode
+        showSensorData(modesColor);
+        std::cout << "Select Color Mode: ";
+        int mode;
+        std::cin >> mode;
+
+        OPENNI_CHECK( color_stream->setVideoMode( modesColor[mode] ) );
+
+        // Start Stream
+        OPENNI_CHECK( color_stream->start() );
+
+        colorStreamsList.push_back(color_stream);
+
+    }
+
+    printf("innited color\n");
 }
 
 // Initialize Point Cloud
 inline void PointcloudViz::initializeViewer()
 {
-    // Create Window
-    viewer = cv::viz::Viz3d( "ZED Point Cloud" );
-    viewer.setWindowSize( cv::Size(800,600));
 
-    // Register Keyboard Callback Function
-    viewer.registerKeyboardCallback( &keyboardCallback, this );
+    //set up a viewer for each stream
+    for (int i = 0; i < deviceList.size(); i++)
+    {
+        // Create Window
+        cv::viz::Viz3d viewer = cv::viz::Viz3d( "asus");
+        viewer.setWindowSize( cv::Size(800,600));
+
+        // Register Keyboard Callback Function
+        viewer.registerKeyboardCallback( &keyboardCallback, this );
+
+        viewers.push_back(viewer);
+    }
+
+    viewers[0].registerKeyboardCallback( &keyboardCallback, this );
 }
 
 // Keyboard Callback Function
@@ -131,10 +205,19 @@ void PointcloudViz::keyboardCallback( const cv::viz::KeyboardEvent& event, void*
     if( (event.code == 'q' || event.code=='Q' || event.code==27) && event.action == cv::viz::KeyboardEvent::Action::KEY_DOWN ){
 
         // Retrieve Viewer
-        cv::viz::Viz3d viewer = static_cast<PointcloudViz*>( cookie )->viewer;
+        cv::viz::Viz3d viewer = static_cast<PointcloudViz*>( cookie )->viewers[0]; // just callback in the first viewer
 
         // Close Viewer
         viewer.close();
+    }
+
+    // save screenshot
+    if( (event.code == 's' || event.code=='S') && event.action == cv::viz::KeyboardEvent::Action::KEY_DOWN ){
+        // Retrieve Viewer
+        cv::viz::Viz3d viewer = static_cast<PointcloudViz*>( cookie )->viewers[0];
+
+        // Save Screenshot
+        viewer.saveScreenshot("screenshot.png");
     }
 
     
@@ -150,6 +233,7 @@ void PointcloudViz::finalize()
 // Update Data
 void PointcloudViz::update()
 {
+    
     // Update Color
     updateColor();
 
@@ -160,34 +244,27 @@ void PointcloudViz::update()
 // Update Color
 inline void PointcloudViz::updateColor()
 {
-    // Update Frame
-    OPENNI_CHECK( color_stream.readFrame( &color_frame ) );
 
-    // Retrive Frame Size
-    width = color_frame.getWidth();
-    height = color_frame.getHeight();
+    for (int i = 0; i < colorStreamsList.size(); i++)
+    {
+        // Update Frame
+        OPENNI_CHECK( colorStreamsList[i]->readFrame( &color_frames[i] ) );
+    }
+    
 }
 
 // Update Depth
 inline void PointcloudViz::updateDepth()
 {
-    // Update Frame
-    OPENNI_CHECK( depth_stream.readFrame( &depth_frame ) );
+    for (int i = 0; i < depthStreamsList.size(); i++)
+    {
+        // Update Frame
+        OPENNI_CHECK( depthStreamsList[i]->readFrame( &depth_frames[i] ) );
+    }
 
-    // Retrieve Frame Size
-    width = depth_frame.getWidth();
-    height = depth_frame.getHeight();
 }
 
-// Draw Color
-inline void PointcloudViz::drawColor()
-{
-    // Create cv::Mat form Color Frame
-    color_mat = cv::Mat( height, width, CV_8UC3, const_cast<void*>( color_frame.getData() ) );
 
-    // Convert RGB to BGR
-    cv::cvtColor( color_mat, color_mat, cv::COLOR_RGB2BGR );
-}
 
 // Draw Data
 void PointcloudViz::draw()
@@ -199,35 +276,67 @@ void PointcloudViz::draw()
     drawPointCloud();
 }
 
+// Draw Color
+inline void PointcloudViz::drawColor()
+{
+
+    colorMatList.clear();
+    for (int i = 0; i < color_frames.size(); i++)
+    {
+        // Create cv::Mat form Color Frame
+        cv::Mat color_mat = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
+         const_cast<void*>( color_frames[i].getData() ) );
+
+        // Convert RGB to BGR
+        cv::cvtColor( color_mat, color_mat, cv::COLOR_RGB2BGR );
+
+        colorMatList.push_back(color_mat);
+
+    }
+    
+    
+}
+
 // Draw Point Cloud
 inline void PointcloudViz::drawPointCloud()
 {
-    if( !depth_frame.isValid() ){
-        return;
-    }
 
-    // Retrieve Depth
-    const uint16_t* depth = static_cast<const uint16_t*>( depth_frame.getData() );
-
-    // Create cv::Mat from Vertices and Texture
-    vertices_mat = cv::Mat( height, width, CV_32FC3, cv::Vec3f::all( std::numeric_limits<float>::quiet_NaN() ) );
+    verticesMatList.clear();
+    for (int i = 0; i < depth_frames.size(); i++)
+    {    
     
-#pragma omp parallel for
-    for( uint32_t y = 0; y < height; y++ ){
-        for( uint32_t x = 0; x < width; x++ ){
-            // Retrieve Depth
-            const uint16_t z = depth[y * width + x];
-            if( !z ){
-                continue;
-            }
-
-            // Convert Depth to World
-            float wx, wy, wz;
-            OPENNI_CHECK( openni::CoordinateConverter::convertDepthToWorld( depth_stream, static_cast<float>( x ), static_cast<float>( y ), static_cast<float>( z ), &wx, &wy, &wz ) );
-
-            // Add Point to Vertices
-            vertices_mat.at<cv::Vec3f>( y, x ) = cv::Vec3f( wx, wy, wz );
+        if( !depth_frames[i].isValid() ){
+            printf("Invalid Depth Frame\n");
+            break;
         }
+
+        // Retrieve Depth
+        const uint16_t* depth = static_cast<const uint16_t*>( depth_frames[i].getData() );
+
+        // Create cv::Mat from Vertices and Texture
+        cv::Mat vertices_mat = cv::Mat( depth_frames[i].getHeight(), depth_frames[i].getWidth(),
+         CV_32FC3, cv::Vec3f::all( std::numeric_limits<float>::quiet_NaN() ) );
+    
+        #pragma omp parallel for
+        for( uint32_t y = 0; y < depth_frames[i].getHeight(); y++ ){
+            for( uint32_t x = 0; x < depth_frames[i].getWidth(); x++ ){
+
+                // Retrieve Depth
+                const uint16_t z = depth[y * depth_frames[i].getWidth() + x];
+                if( !z ){
+                    continue;
+                }
+
+                // Convert Depth to World
+                float wx, wy, wz;
+                OPENNI_CHECK( openni::CoordinateConverter::convertDepthToWorld( *depthStreamsList[i], static_cast<float>( x ), static_cast<float>( y ), static_cast<float>( z ), &wx, &wy, &wz ) );
+
+                // Add Point to Vertices
+                vertices_mat.at<cv::Vec3f>( y, x ) = cv::Vec3f( wx, wy, wz );
+            }
+        }
+
+        verticesMatList.push_back(vertices_mat);
     }
 }
 
@@ -241,30 +350,31 @@ void PointcloudViz::show()
 // Show Point Cloud
 inline void PointcloudViz::showPointCloud()
 {
-    if( vertices_mat.empty() ){
-        return;
+    
+
+    for (int i = 0; i < viewers.size(); i++)
+    {
+
+        if( verticesMatList[i].empty() ){
+        break;
+        }
+
+        // Create Point Cloud
+        cv::viz::WCloud cloud( verticesMatList[i], colorMatList[i]);
+
+        // Show Point Cloud
+        viewers[i].showWidget( "Cloud", cloud );
+        viewers[i].showWidget("Coordinate Widget", cv::viz::WCoordinateSystem(500.0));
+        //viewer.resetCameraViewpoint("Cloud");
+
+        viewers[i].spinOnce();
     }
-
-    // Create Point Cloud
-    cv::viz::WCloud cloud( vertices_mat, color_mat);
-
-    // Show Point Cloud
-    viewer.showWidget( "Cloud", cloud );
-    viewer.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem(500.0));
-    //viewer.resetCameraViewpoint("Cloud");
-
-    viewer.spinOnce();
-
-    std::cout << depth_stream.getVideoMode().getResolutionX() << std::endl;
-
-
+    
 }
 
-void PointcloudViz::showSensorData()
+void PointcloudViz::showSensorData(const openni::Array< openni::VideoMode>& modesDepth)
 {
     std::cout << "Depth modes" << std::endl;
-    const openni::SensorInfo* sinfo = device.getSensorInfo(openni::SENSOR_DEPTH); // select index=4 640x480, 30 fps, 1mm
-    const openni::Array< openni::VideoMode>& modesDepth = sinfo->getSupportedVideoModes();
     for (int i = 0; i<modesDepth.getSize(); i++) {
         printf("%i: %ix%i, %i fps, %i format\n", i, modesDepth[i].getResolutionX(), modesDepth[i].getResolutionY(),
             modesDepth[i].getFps(), modesDepth[i].getPixelFormat()); //PIXEL_FORMAT_DEPTH_1_MM = 100, PIXEL_FORMAT_DEPTH_100_UM

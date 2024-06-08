@@ -29,21 +29,19 @@ class PointcloudViz
 {
 private:
     // Device
-    openni::Device device;
-    openni::VideoStream depth_stream;
-    openni::VideoStream color_stream;
+    std::vector<openni::Device*> deviceList;
+    std::vector<openni::VideoStream*> depthStreamsList;
+    std::vector<openni::VideoStream*> colorStreamsList;
 
     // Depth Buffer
-    openni::VideoFrameRef depth_frame;
-    openni::VideoFrameRef color_frame;
-    cv::Mat color_mat;
-    uint32_t width = 640;
-    uint32_t height = 480;
-    uint32_t fps = 30;
+    std::vector<openni::VideoFrameRef> depth_frames;
+    std::vector<openni::VideoFrameRef> color_frames;
+
+    std::vector<cv::Mat> colorMatList;
 
     // Point Cloud Buffer
-    cv::viz::Viz3d viewer;
-    cv::Mat vertices_mat;
+    std::vector<cv::viz::Viz3d> viewers;
+    std::vector<cv::Mat> verticesMatList;
 
 public:
     // Constructor
@@ -102,7 +100,7 @@ private:
     inline void showPointCloud();
 
     //show sensor data
-    void showSensorData();
+    void showSensorData(const openni::Array< openni::VideoMode>& modesDepth);
 };
 
 #endif // POINTCLOUDVIZ_HPP
