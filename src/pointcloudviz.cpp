@@ -44,7 +44,7 @@ void PointcloudViz::run()
         update();
 
         // Draw Data
-        //draw();
+        draw();
 
         // Show Data
         //show();
@@ -54,7 +54,60 @@ void PointcloudViz::run()
         if( key == 'q' ){
             break;
         }
+
+        if( key == 's' ){
+            // Save a png of all images from colormatlist
+            for (int i = 0; i < colorMatList.size(); i++)
+            {
+                //make the filename have its date and time
+                time_t now = time(0);
+                tm *ltm = localtime(&now);
+                std::string filename = "color" + std::to_string(i) + "_" + std::to_string(1900 + ltm->tm_year) + "_" + std::to_string(1 + ltm->tm_mon) + "_" + std::to_string(ltm->tm_mday) + "_" + std::to_string(ltm->tm_hour) + "_" + std::to_string(ltm->tm_min) + "_" + std::to_string(ltm->tm_sec) + ".png";
+                cv::imwrite(filename, colorMatList[i]);
+
+            
+            }
+
+            // save verticesmatlist as various pcd files
+            /* for (int i = 0; i < verticesMatList.size(); i++)
+            {
+                // Save Point Cloud in a file from verticesmatlist and colormatlist
+                savePointCloud(verticesMatList[i], colorMatList[i], "pointcloud" + std::to_string(i) + ".pcd");
+            } */
+
+        }
     }
+}
+
+void PointcloudViz::savePointCloud(cv::Mat cloud_points, cv::Mat cloud_colors, std::string filename)
+{
+    // Create Point Cloud
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    // Fill the PCL point cloud with data
+    for (int i = 0; i < cloud_points.rows; ++i) {
+        for (int j = 0; j < cloud_points.cols; ++j) {
+            pcl::PointXYZRGB point;
+            point.x = cloud_points.at<cv::Vec3f>(i, j)[0];
+            point.y = cloud_points.at<cv::Vec3f>(i, j)[1];
+            point.z = cloud_points.at<cv::Vec3f>(i, j)[2];
+
+            point.r = cloud_colors.at<cv::Vec3b>(i, j)[2]; // OpenCV uses BGR, PCL uses RGB
+            point.g = cloud_colors.at<cv::Vec3b>(i, j)[1];
+            point.b = cloud_colors.at<cv::Vec3b>(i, j)[0];
+
+            pcl_cloud->points.push_back(point);
+        }
+    }
+
+    pcl_cloud->width = static_cast<uint32_t>(cloud_points.rows) * static_cast<uint32_t>(cloud_points.cols);
+    pcl_cloud->height = 1;
+    pcl_cloud->is_dense = false;
+
+    // Save the PCL point cloud to a PCD file
+    pcl::io::savePCDFileASCII(filename, *pcl_cloud);
+    std::cout << "Saved " << pcl_cloud->points.size() << " data points to " << filename << std::endl;
+
 }
 
 // Initialize
@@ -285,7 +338,7 @@ inline void PointcloudViz::updateColor()
     }
 
     //show images from devices in two diffenrent windows
-    /* for (int i = 0; i < color_frames.size(); i++)
+    for (int i = 0; i < color_frames.size(); i++)
     {
         cv::Mat image = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
          const_cast<void*>( color_frames[i].getData() ) );
@@ -294,7 +347,7 @@ inline void PointcloudViz::updateColor()
 
         cv::namedWindow("Color " + std::to_string(i));
         cv::imshow("Color " + std::to_string(i), image);
-    } */
+    } 
     
 }
 
