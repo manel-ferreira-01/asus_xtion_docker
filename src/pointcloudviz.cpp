@@ -140,7 +140,7 @@ inline void PointcloudViz::initializeDepth()
             for (int j = 0; j < modesDepth.getSize(); j++)
             {
                 if (modesDepth[j].getResolutionX() == 640 && modesDepth[j].getResolutionY() == 480 &&
-                    modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_1_MM)
+                    modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_100_UM)
                 {
                     mode = j;
                     break;
@@ -148,9 +148,6 @@ inline void PointcloudViz::initializeDepth()
             }
 
         }
-        
-        std::cout << mode << std::endl;
-
 
         OPENNI_CHECK( depth_stream->setVideoMode( modesDepth[mode] ) );
 
@@ -285,7 +282,19 @@ inline void PointcloudViz::updateColor()
     {
         // Update Frame
         OPENNI_CHECK( colorStreamsList[i]->readFrame( &color_frames[i] ) );
-    }   
+    }
+
+    //show images from devices in two diffenrent windows
+    /* for (int i = 0; i < color_frames.size(); i++)
+    {
+        cv::Mat image = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
+         const_cast<void*>( color_frames[i].getData() ) );
+
+        cv::cvtColor( image, image, cv::COLOR_RGB2BGR );
+
+        cv::namedWindow("Color " + std::to_string(i));
+        cv::imshow("Color " + std::to_string(i), image);
+    } */
     
 }
 
