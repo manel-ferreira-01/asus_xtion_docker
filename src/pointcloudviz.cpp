@@ -44,10 +44,10 @@ void PointcloudViz::run()
         update();
 
         // Draw Data
-        draw();
+        //draw();
 
         // Show Data
-        show();
+        //show();
 
         // Key Check
         const int32_t key = cv::waitKey( 10 );
@@ -108,8 +108,6 @@ inline void PointcloudViz::initializeDevice()
         deviceList.push_back(device);
     }
     
-
-    printf("innited everything\n");
 }
 
 // Initialize Depth
@@ -127,11 +125,32 @@ inline void PointcloudViz::initializeDepth()
         openni::VideoStream* depth_stream = new openni::VideoStream;
         OPENNI_CHECK( depth_stream->create( *deviceList[i], openni::SENSOR_DEPTH ) );
 
-        // Set Video Mode
-        showSensorData(modesDepth);
-        std::cout << "Select Depth Mode: ";
+
+
+
         int mode;
-        std::cin >> mode;
+        // Set Video Mode
+        if (false){
+            showSensorData(modesDepth);
+            std::cout << "Select Depth Mode: ";
+            std::cin >> mode;
+        } else {
+
+            // go through modes and select the 480p
+            for (int j = 0; j < modesDepth.getSize(); j++)
+            {
+                if (modesDepth[j].getResolutionX() == 640 && modesDepth[j].getResolutionY() == 480 &&
+                    modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_1_MM)
+                {
+                    mode = j;
+                    break;
+                }
+            }
+
+        }
+        
+        std::cout << mode << std::endl;
+
 
         OPENNI_CHECK( depth_stream->setVideoMode( modesDepth[mode] ) );
 
@@ -141,8 +160,6 @@ inline void PointcloudViz::initializeDepth()
         depthStreamsList.push_back(depth_stream);
 
     }
-
-    printf("innited depth\n");
     
 }
 
@@ -160,11 +177,24 @@ inline void PointcloudViz::initializeColor()
         openni::VideoStream* color_stream = new openni::VideoStream;
         OPENNI_CHECK( color_stream->create( *deviceList[i], openni::SENSOR_COLOR ) );
 
-        // Set Video Mode
-        showSensorData(modesColor);
-        std::cout << "Select Color Mode: ";
         int mode;
-        std::cin >> mode;
+        // Set Video Mode
+        if (false){
+            showSensorData(modesColor);
+            std::cout << "Select color Mode: ";
+            std::cin >> mode;
+        } else {
+            // go through modes and select the 480p
+            for (int j = 0; j < modesColor.getSize(); j++)
+            {
+                if (modesColor[j].getResolutionX() == 640 && modesColor[j].getResolutionY() == 480 &&
+                    modesColor[j].getPixelFormat() == openni::PIXEL_FORMAT_RGB888)
+                {
+                    mode = j;
+                    break;
+                }
+            }
+        }
 
         OPENNI_CHECK( color_stream->setVideoMode( modesColor[mode] ) );
 
@@ -175,7 +205,6 @@ inline void PointcloudViz::initializeColor()
 
     }
 
-    printf("innited color\n");
 }
 
 // Initialize Point Cloud
@@ -239,6 +268,13 @@ void PointcloudViz::update()
 
     // Update Depth
     updateDepth();
+
+    //print depth and color frame sizes
+    for (int i = 0; i < depth_frames.size(); i++)
+    {
+        printf("Depth Frame %i: %ix%i\n", i, color_frames[i].getWidth(), color_frames[i].getHeight());
+    }
+
 }
 
 // Update Color
@@ -249,7 +285,7 @@ inline void PointcloudViz::updateColor()
     {
         // Update Frame
         OPENNI_CHECK( colorStreamsList[i]->readFrame( &color_frames[i] ) );
-    }
+    }   
     
 }
 
