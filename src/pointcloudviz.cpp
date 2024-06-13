@@ -79,7 +79,7 @@ void PointcloudViz::run()
     }
 }
 
-void PointcloudViz::savePointCloud(cv::Mat cloud_points, cv::Mat cloud_colors, std::string filename)
+/* void PointcloudViz::savePointCloud(cv::Mat cloud_points, cv::Mat cloud_colors, std::string filename)
 {
     // Create Point Cloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -108,7 +108,7 @@ void PointcloudViz::savePointCloud(cv::Mat cloud_points, cv::Mat cloud_colors, s
     pcl::io::savePCDFileASCII(filename, *pcl_cloud);
     std::cout << "Saved " << pcl_cloud->points.size() << " data points to " << filename << std::endl;
 
-}
+} */
 
 // Initialize
 void PointcloudViz::initialize()
@@ -116,6 +116,7 @@ void PointcloudViz::initialize()
     cv::setUseOptimized( true );
 
     // Initialize OpenNI2
+    openni::OpenNI::shutdown();
     OPENNI_CHECK( openni::OpenNI::initialize() );
 
 
@@ -158,9 +159,10 @@ inline void PointcloudViz::initializeDevice()
     {
         openni::Device* device = new openni::Device;
         OPENNI_CHECK(device->open(deviceListInfo[i].getUri()));
+        //OPENNI_CHECK(device->open(openni::ANY_DEVICE));
         deviceList.push_back(device);
     }
-    
+    printf("opened all devices\n");
 }
 
 // Initialize Depth

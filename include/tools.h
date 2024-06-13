@@ -22,7 +22,6 @@
 #define TOOLS_HPP
 
 #include <OpenNI.h>
-
 #include <sstream>
 #include <stdexcept>
 
