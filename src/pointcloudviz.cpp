@@ -1,23 +1,3 @@
-///////////////////////////////////////////////////////////////////////////
-//
-// Copyright (c) 2021, STEREOLABS.
-//
-// All rights reserved.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-///////////////////////////////////////////////////////////////////////////
-
 #include "pointcloudviz.h"
 
 // Constructor
@@ -30,15 +10,30 @@ PointcloudViz::PointcloudViz()
 // Destructor
 PointcloudViz::~PointcloudViz()
 {
-    // Finalize
-    finalize();
+
+    if (viewer_thread && viewer_thread->joinable()) {
+        viewer->close();
+        viewer_thread->join();
+    }
+    delete viewer_thread;
+
+    cv::destroyAllWindows();
+
+    // Clean up OpenNI
+    for (auto &device : deviceList) {
+        device->close();
+        delete device;
+    }
+    openni::OpenNI::shutdown();
+
+
 }
 
 // Processing
 void PointcloudViz::run()
 {
     // Main Loop
-    while( !viewers[0].wasStopped() ){
+    while( true ){
         // Update Data
         update();
 
@@ -46,7 +41,7 @@ void PointcloudViz::run()
         draw();
 
         // Show Data
-        //show();
+        show();
 
         // Key Check
         const int32_t key = cv::waitKey( 10 );
@@ -100,7 +95,7 @@ void PointcloudViz::initialize()
     initializeDepth();
 
     // Initialize Point Cloud
-    initializeViewer();
+    viewer_thread = new boost::thread(boost::bind(&PointcloudViz::initializeViewer, this));
 
     printf("innited all\n");
 
@@ -240,53 +235,17 @@ inline void PointcloudViz::initializeColor()
 // Initialize Point Cloud
 inline void PointcloudViz::initializeViewer()
 {
-
-    //set up a viewer for each stream
-    for (int i = 0; i < deviceList.size(); i++)
-    {
-        // Create Window
-        cv::viz::Viz3d viewer = cv::viz::Viz3d( "asus");
-        viewer.setWindowSize( cv::Size(800,600));
-
-        // Register Keyboard Callback Function
-        viewer.registerKeyboardCallback( &keyboardCallback, this );
-
-        viewers.push_back(viewer);
-    }
-
-    viewers[0].registerKeyboardCallback( &keyboardCallback, this );
-}
-
-// Keyboard Callback Function
-void PointcloudViz::keyboardCallback( const cv::viz::KeyboardEvent& event, void* cookie )
-{
-    // Exit Viewer when Pressed ESC key
-    if( (event.code == 'q' || event.code=='Q' || event.code==27) && event.action == cv::viz::KeyboardEvent::Action::KEY_DOWN ){
-
-        // Retrieve Viewer
-        cv::viz::Viz3d viewer = static_cast<PointcloudViz*>( cookie )->viewers[0]; // just callback in the first viewer
-
-        // Close Viewer
-        viewer.close();
-    }
-
-    // save screenshot
-    if( (event.code == 's' || event.code=='S') && event.action == cv::viz::KeyboardEvent::Action::KEY_DOWN ){
-        // Retrieve Viewer
-        cv::viz::Viz3d viewer = static_cast<PointcloudViz*>( cookie )->viewers[0];
-
-        // Save Screenshot
-        viewer.saveScreenshot("screenshot.png");
-    }
-
     
-};
+    viewer = pcl::visualization::PCLVisualizer::Ptr(new pcl::visualization::PCLVisualizer("Point Cloud Viewer"));
+    viewer->setBackgroundColor(0,0,0);
+    viewer->addCoordinateSystem(10);
+    viewer->initCameraParameters();
 
-// Finalize
-void PointcloudViz::finalize()
-{
-    // Close Windows
-    cv::destroyAllWindows();
+    while (!viewer->wasStopped()) {
+        viewer->spinOnce(10);
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+    }
+
 }
 
 // Update Data
@@ -309,18 +268,6 @@ inline void PointcloudViz::updateColor()
     {
         // Update Frame
         OPENNI_CHECK( colorStreamsList[i]->readFrame( &color_frames[i] ) );
-    }
-
-    //show images from devices in two diffenrent windows
-    for (int i = 0; i < color_frames.size(); i++)
-    {
-        cv::Mat image = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
-         const_cast<void*>( color_frames[i].getData() ) );
-
-        cv::cvtColor( image, image, cv::COLOR_RGB2BGR );
-
-        cv::namedWindow("Color " + std::to_string(i));
-        cv::imshow("Color " + std::to_string(i), image);
     } 
     
 }
@@ -359,10 +306,20 @@ inline void PointcloudViz::drawColor()
         cv::Mat color_mat = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
          const_cast<void*>( color_frames[i].getData() ) );
 
+        cv::cvtColor( color_mat, color_mat, cv::COLOR_RGB2BGR );
+
         colorMatList.push_back(color_mat);
 
+        if (false){
+
+            cv::namedWindow("Color " + std::to_string(i));
+            cv::imshow("Color " + std::to_string(i), color_mat);
+
+        }
+
     }
-    
+
+
     
 }
 
@@ -409,17 +366,17 @@ inline void PointcloudViz::drawPointCloud()
             OPENNI_CHECK(openni::CoordinateConverter::convertDepthToWorld(*depthStreamsList[i], static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), &wx, &wy, &wz));
 
             // Set Point XYZ coordinates
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz / 1000.0f;
 
             // Retrieve Color
             const uint8_t* color_ptr = &color[(y * depth_frames[i].getWidth() + x) * 3];
             
             // Set Point RGB color
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].r = color_ptr[0];
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].r = color_ptr[2];
             pcl_cloud->points[y * depth_frames[i].getWidth() + x].g = color_ptr[1];
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].b = color_ptr[2];
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].b = color_ptr[0];
             
             }
         }
@@ -434,6 +391,7 @@ void PointcloudViz::show()
 {
     // Show Point Cloud
     showPointCloud();
+
 }
 
 // Show Point Cloud
@@ -441,15 +399,29 @@ inline void PointcloudViz::showPointCloud()
 {
     
 
-    for (int i = 0; i < viewers.size(); i++)
+    printf("pcloudList size %li\n", pcloudList.size());
+    for (int i = 0; i < pcloudList.size(); i++)
     {
 
         if( pcloudList[i]->points.size() == 0 ){
             break;
         }
 
+        // Update Point Cloud
+        if (!viewer->updatePointCloud(pcloudList[i], "cloud"))
+        {
+            viewer->addPointCloud(pcloudList[i], "cloud");
+
+            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+        }
+        
+        printf("showing point cloud with size %li\n", pcloudList[i]->points.size());
+
+        break;
+
     }
-    
+
 }
 
 void PointcloudViz::showSensorData(const openni::Array< openni::VideoMode>& modesDepth)

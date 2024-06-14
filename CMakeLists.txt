@@ -32,6 +32,11 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
+#add boost
+find_package(Boost COMPONENTS thread REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+
+
 
 # Add executable
 add_executable(OpenNI2_OpenCV src/main.cpp src/pointcloudviz.cpp)
@@ -39,4 +44,5 @@ add_executable(OpenNI2_OpenCV src/main.cpp src/pointcloudviz.cpp)
 # Link libraries
 target_link_libraries(OpenNI2_OpenCV ${OpenCV_LIBS}
      ${PCL_LIBRARIES}
-     OpenNI2)
+     Boost::thread
+          OpenNI2)

@@ -25,9 +25,12 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/viz.hpp>
 #include "tools.h"
+#include <boost/thread/thread.hpp>
+#include <boost/bind.hpp>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/visualization/pcl_visualizer.h>
 
 class PointcloudViz
 {
@@ -43,9 +46,12 @@ private:
 
     std::vector<cv::Mat> colorMatList;
 
-    // Point Cloud Buffer
-    std::vector<cv::viz::Viz3d> viewers;
+    // Point Cloud viewer and data
+    pcl::visualization::PCLVisualizer::Ptr viewer;
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcloudList;
+
+    // thread
+    boost::thread* viewer_thread;
 
 public:
     // Constructor
@@ -72,9 +78,6 @@ private:
 
     // Initialize Point Cloud
     inline void initializeViewer();
-
-    // Keyboard Callback Function
-    static void keyboardCallback( const cv::viz::KeyboardEvent& event, void* cookie );
 
     // Finalize
     void finalize();

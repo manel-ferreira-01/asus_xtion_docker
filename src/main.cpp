@@ -28,6 +28,8 @@ int main( int argc, char* argv[] )
     try{
         PointcloudViz viz;
         viz.run();
+        delete &viz;
+
     } catch( std::exception& ex ){
         std::cout << ex.what() << std::endl;
     }
