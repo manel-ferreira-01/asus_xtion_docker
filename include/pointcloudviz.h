@@ -24,6 +24,10 @@
 #include <OpenNI.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/viz.hpp>
+#include "tools.h"
+
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
 
 class PointcloudViz
 {
@@ -41,7 +45,7 @@ private:
 
     // Point Cloud Buffer
     std::vector<cv::viz::Viz3d> viewers;
-    std::vector<cv::Mat> verticesMatList;
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcloudList;
 
 public:
     // Constructor
@@ -101,9 +105,6 @@ private:
 
     //show sensor data
     void showSensorData(const openni::Array< openni::VideoMode>& modesDepth);
-
-    //save point cloud
-    //void savePointCloud(cv::Mat cloud_points, cv::Mat cloud_colors, std::string filename);
 };
 
 #endif // POINTCLOUDVIZ_HPP

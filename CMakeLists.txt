@@ -27,10 +27,10 @@ include_directories(/usr/include/openni2)
 find_package(OpenCV REQUIRED)
 
 # add pcl library
-#find_package(PCL REQUIRED)
-#include_directories(${PCL_INCLUDE_DIRS})
-#link_directories(${PCL_LIBRARY_DIRS})
-#add_definitions(${PCL_DEFINITIONS})
+find_package(PCL REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 
 # Add executable
@@ -38,5 +38,5 @@ add_executable(OpenNI2_OpenCV src/main.cpp src/pointcloudviz.cpp)
 
 # Link libraries
 target_link_libraries(OpenNI2_OpenCV ${OpenCV_LIBS}
-    # ${PCL_LIBRARIES}
+     ${PCL_LIBRARIES}
      OpenNI2)

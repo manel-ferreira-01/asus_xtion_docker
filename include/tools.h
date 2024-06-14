@@ -30,7 +30,7 @@
     if( ret != openni::STATUS_OK ){                               \
         std::stringstream ss;                                     \
         ss << "failed " #ret " " << std::hex << ret << std::endl; \
-        throw std::runtime_error( ss.str().c_str() );             \
+        throw std::runtime_error( openni::OpenNI::getExtendedError() );             \
     }
 
 #endif // TOOLS_HPP

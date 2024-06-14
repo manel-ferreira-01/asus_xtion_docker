@@ -19,7 +19,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "pointcloudviz.h"
-#include "tools.h"
 
 // Constructor
 PointcloudViz::PointcloudViz()
@@ -62,53 +61,26 @@ void PointcloudViz::run()
                 //make the filename have its date and time
                 time_t now = time(0);
                 tm *ltm = localtime(&now);
-                std::string filename = "color" + std::to_string(i) + "_" + std::to_string(1900 + ltm->tm_year) + "_" + std::to_string(1 + ltm->tm_mon) + "_" + std::to_string(ltm->tm_mday) + "_" + std::to_string(ltm->tm_hour) + "_" + std::to_string(ltm->tm_min) + "_" + std::to_string(ltm->tm_sec) + ".png";
+
+                std::string filename = "color" + std::to_string(i) + "_" + std::to_string(1900 + ltm->tm_year) + 
+                 "_" + std::to_string(1 + ltm->tm_mon) + "_" + std::to_string(ltm->tm_mday) + 
+                  "_" + std::to_string(ltm->tm_hour) + "_" + std::to_string(ltm->tm_min) + 
+                   "_" + std::to_string(ltm->tm_sec) + ".png";
+
                 cv::imwrite(filename, colorMatList[i]);
 
-            
             }
 
-            // save verticesmatlist as various pcd files
-            /* for (int i = 0; i < verticesMatList.size(); i++)
+            // save pcloudList as various pcd files
+            for (int i = 0; i < pcloudList.size(); i++)
             {
-                // Save Point Cloud in a file from verticesmatlist and colormatlist
-                savePointCloud(verticesMatList[i], colorMatList[i], "pointcloud" + std::to_string(i) + ".pcd");
-            } */
+                pcl::io::savePCDFileASCII("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
+                std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            }
 
         }
     }
 }
 
-/* void PointcloudViz::savePointCloud(cv::Mat cloud_points, cv::Mat cloud_colors, std::string filename)
-{
-    // Create Point Cloud
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-    // Fill the PCL point cloud with data
-    for (int i = 0; i < cloud_points.rows; ++i) {
-        for (int j = 0; j < cloud_points.cols; ++j) {
-            pcl::PointXYZRGB point;
-            point.x = cloud_points.at<cv::Vec3f>(i, j)[0];
-            point.y = cloud_points.at<cv::Vec3f>(i, j)[1];
-            point.z = cloud_points.at<cv::Vec3f>(i, j)[2];
-
-            point.r = cloud_colors.at<cv::Vec3b>(i, j)[2]; // OpenCV uses BGR, PCL uses RGB
-            point.g = cloud_colors.at<cv::Vec3b>(i, j)[1];
-            point.b = cloud_colors.at<cv::Vec3b>(i, j)[0];
-
-            pcl_cloud->points.push_back(point);
-        }
-    }
-
-    pcl_cloud->width = static_cast<uint32_t>(cloud_points.rows) * static_cast<uint32_t>(cloud_points.cols);
-    pcl_cloud->height = 1;
-    pcl_cloud->is_dense = false;
-
-    // Save the PCL point cloud to a PCD file
-    pcl::io::savePCDFileASCII(filename, *pcl_cloud);
-    std::cout << "Saved " << pcl_cloud->points.size() << " data points to " << filename << std::endl;
-
-} */
 
 // Initialize
 void PointcloudViz::initialize()
@@ -116,9 +88,7 @@ void PointcloudViz::initialize()
     cv::setUseOptimized( true );
 
     // Initialize OpenNI2
-    openni::OpenNI::shutdown();
     OPENNI_CHECK( openni::OpenNI::initialize() );
-
 
     // Initialize Device
     initializeDevice();
@@ -162,6 +132,14 @@ inline void PointcloudViz::initializeDevice()
         //OPENNI_CHECK(device->open(openni::ANY_DEVICE));
         deviceList.push_back(device);
     }
+
+    //no device found and leave
+    if (deviceList.size() == 0)
+    {
+        printf("No device found\n");
+        exit(1);
+    }
+
     printf("opened all devices\n");
 }
 
@@ -321,12 +299,6 @@ void PointcloudViz::update()
     // Update Depth
     updateDepth();
 
-    //print depth and color frame sizes
-    for (int i = 0; i < depth_frames.size(); i++)
-    {
-        printf("Depth Frame %i: %ix%i\n", i, color_frames[i].getWidth(), color_frames[i].getHeight());
-    }
-
 }
 
 // Update Color
@@ -387,9 +359,6 @@ inline void PointcloudViz::drawColor()
         cv::Mat color_mat = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
          const_cast<void*>( color_frames[i].getData() ) );
 
-        // Convert RGB to BGR
-        cv::cvtColor( color_mat, color_mat, cv::COLOR_RGB2BGR );
-
         colorMatList.push_back(color_mat);
 
     }
@@ -401,7 +370,7 @@ inline void PointcloudViz::drawColor()
 inline void PointcloudViz::drawPointCloud()
 {
 
-    verticesMatList.clear();
+    pcloudList.clear();
     for (int i = 0; i < depth_frames.size(); i++)
     {    
     
@@ -412,31 +381,51 @@ inline void PointcloudViz::drawPointCloud()
 
         // Retrieve Depth
         const uint16_t* depth = static_cast<const uint16_t*>( depth_frames[i].getData() );
+        const uint8_t* color = static_cast<const uint8_t*>( color_frames[i].getData() );
 
-        // Create cv::Mat from Vertices and Texture
-        cv::Mat vertices_mat = cv::Mat( depth_frames[i].getHeight(), depth_frames[i].getWidth(),
-         CV_32FC3, cv::Vec3f::all( std::numeric_limits<float>::quiet_NaN() ) );
-    
+
+        // Create pcl::PointCloud<pcl::PointXYZRGB> object
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        
+
+        // Resize the point cloud to match the depth frame size
+        pcl_cloud->width = depth_frames[i].getWidth();
+        pcl_cloud->height = depth_frames[i].getHeight();
+        pcl_cloud->is_dense = false;
+        pcl_cloud->points.resize(pcl_cloud->width * pcl_cloud->height);
+
         #pragma omp parallel for
-        for( uint32_t y = 0; y < depth_frames[i].getHeight(); y++ ){
-            for( uint32_t x = 0; x < depth_frames[i].getWidth(); x++ ){
+        for (uint32_t y = 0; y < depth_frames[i].getHeight(); y++) {
+            for (uint32_t x = 0; x < depth_frames[i].getWidth(); x++) {
 
-                // Retrieve Depth
-                const uint16_t z = depth[y * depth_frames[i].getWidth() + x];
-                if( !z ){
-                    continue;
-                }
+            // Retrieve Depth
+            const uint16_t z = depth[y * depth_frames[i].getWidth() + x];
+            if (!z) {
+                continue;
+            }
 
-                // Convert Depth to World
-                float wx, wy, wz;
-                OPENNI_CHECK( openni::CoordinateConverter::convertDepthToWorld( *depthStreamsList[i], static_cast<float>( x ), static_cast<float>( y ), static_cast<float>( z ), &wx, &wy, &wz ) );
+            // Convert Depth to World
+            float wx, wy, wz;
+            OPENNI_CHECK(openni::CoordinateConverter::convertDepthToWorld(*depthStreamsList[i], static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), &wx, &wy, &wz));
 
-                // Add Point to Vertices
-                vertices_mat.at<cv::Vec3f>( y, x ) = cv::Vec3f( wx, wy, wz );
+            // Set Point XYZ coordinates
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz;
+
+            // Retrieve Color
+            const uint8_t* color_ptr = &color[(y * depth_frames[i].getWidth() + x) * 3];
+            
+            // Set Point RGB color
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].r = color_ptr[0];
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].g = color_ptr[1];
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].b = color_ptr[2];
+            
             }
         }
 
-        verticesMatList.push_back(vertices_mat);
+        // Add the pcl::PointCloud to the pcloudList
+        pcloudList.push_back(pcl_cloud);
     }
 }
 
@@ -455,19 +444,10 @@ inline void PointcloudViz::showPointCloud()
     for (int i = 0; i < viewers.size(); i++)
     {
 
-        if( verticesMatList[i].empty() ){
-        break;
+        if( pcloudList[i]->points.size() == 0 ){
+            break;
         }
 
-        // Create Point Cloud
-        cv::viz::WCloud cloud( verticesMatList[i], colorMatList[i]);
-
-        // Show Point Cloud
-        viewers[i].showWidget( "Cloud", cloud );
-        viewers[i].showWidget("Coordinate Widget", cv::viz::WCoordinateSystem(500.0));
-        //viewer.resetCameraViewpoint("Cloud");
-
-        viewers[i].spinOnce();
     }
     
 }
