@@ -241,9 +241,11 @@ inline void PointcloudViz::initializeViewer()
     viewer->addCoordinateSystem(10);
     viewer->initCameraParameters();
 
+    viewer_launched_flag = 1;
+
     while (!viewer->wasStopped()) {
         viewer->spinOnce(10);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+        boost::this_thread::sleep(boost::posix_time::milliseconds(500));
     }
 
 }
@@ -398,28 +400,17 @@ void PointcloudViz::show()
 inline void PointcloudViz::showPointCloud()
 {
     
+    if (!viewer_launched_flag){
+        return;
+    }
 
-    printf("pcloudList size %li\n", pcloudList.size());
-    for (int i = 0; i < pcloudList.size(); i++)
+    *to_show = *pcloudList[0];   
+
+    // Update Point Cloud
+    if (!viewer->updatePointCloud(to_show, "cloud"))
     {
-
-        if( pcloudList[i]->points.size() == 0 ){
-            break;
-        }
-
-        // Update Point Cloud
-        if (!viewer->updatePointCloud(pcloudList[i], "cloud"))
-        {
-            viewer->addPointCloud(pcloudList[i], "cloud");
-
-            viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-
-        }
-        
-        printf("showing point cloud with size %li\n", pcloudList[i]->points.size());
-
-        break;
-
+        viewer->addPointCloud(to_show, "cloud");
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
     }
 
 }
