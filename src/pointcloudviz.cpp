@@ -1,5 +1,10 @@
 #include "pointcloudviz.h"
 
+
+
+
+#define DISPLAY_POINTCLOUD false
+
 // Constructor
 PointcloudViz::PointcloudViz()
 {
@@ -69,8 +74,9 @@ void PointcloudViz::run()
             // save pcloudList as various pcd files
             for (int i = 0; i < pcloudList.size(); i++)
             {
-                pcl::io::savePCDFileASCII("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
-                std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            }
+                //pcl::io::savePCDFileASCII("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
+                //std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
+            }
 
         }
     }
@@ -95,7 +101,9 @@ void PointcloudViz::initialize()
     initializeDepth();
 
     // Initialize Point Cloud
-    viewer_thread = new boost::thread(boost::bind(&PointcloudViz::initializeViewer, this));
+    if (DISPLAY_POINTCLOUD) {
+        viewer_thread = new boost::thread(boost::bind(&PointcloudViz::initializeViewer, this));
+    }
 
     printf("innited all\n");
 
@@ -152,9 +160,6 @@ inline void PointcloudViz::initializeDepth()
         // Create Stream
         openni::VideoStream* depth_stream = new openni::VideoStream;
         OPENNI_CHECK( depth_stream->create( *deviceList[i], openni::SENSOR_DEPTH ) );
-
-
-
 
         int mode;
         // Set Video Mode
@@ -245,7 +250,7 @@ inline void PointcloudViz::initializeViewer()
 
     while (!viewer->wasStopped()) {
         viewer->spinOnce(10);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+        boost::this_thread::sleep(boost::posix_time::milliseconds(10));
     }
 
 }
@@ -312,7 +317,7 @@ inline void PointcloudViz::drawColor()
 
         colorMatList.push_back(color_mat);
 
-        if (false){
+        if (true){
 
             cv::namedWindow("Color " + std::to_string(i));
             cv::imshow("Color " + std::to_string(i), color_mat);
@@ -391,8 +396,13 @@ inline void PointcloudViz::drawPointCloud()
 // Show Data
 void PointcloudViz::show()
 {
-    // Show Point Cloud
-    showPointCloud();
+    if (DISPLAY_POINTCLOUD)
+    {
+        // Show Point Cloud
+        showPointCloud();
+    }
+    
+    
 
 }
 
@@ -404,12 +414,11 @@ inline void PointcloudViz::showPointCloud()
         return;
     }
 
-    *to_show = *pcloudList[0];   
 
     // Update Point Cloud
-    if (!viewer->updatePointCloud(to_show, "cloud"))
+    if (!viewer->updatePointCloud(pcloudList[0], "cloud"))
     {
-        viewer->addPointCloud(to_show, "cloud");
+        viewer->addPointCloud(pcloudList[0], "cloud");
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
     }
 
