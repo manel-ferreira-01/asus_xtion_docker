@@ -12,6 +12,12 @@
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/common/transforms.h>
+
+#include <json.hpp>
+
+using json = nlohmann::json;
+
 class PointcloudViz
 {
 private:
@@ -33,6 +39,9 @@ private:
     // thread
     boost::thread* viewer_thread;
     int viewer_launched_flag = 0;
+
+    // TFs
+    std::vector<Eigen::Matrix4f> transforms;
 
 public:
     // Constructor
@@ -59,6 +68,9 @@ private:
 
     // Initialize Point Cloud
     inline void initializeViewer();
+
+    // Initialize TFs
+    void initializeTransforms();
 
     // Finalize
     void finalize();

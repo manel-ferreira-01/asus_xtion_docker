@@ -92,6 +92,10 @@ void PointcloudViz::initialize()
 
     // Initialize Depth
     initializeDepth();
+    
+    //initialize transforms
+    initializeTransforms();
+
 
     // Initialize Point Cloud
     if (DISPLAY_POINTCLOUD) {
@@ -228,6 +232,42 @@ inline void PointcloudViz::initializeColor()
 
     }
 
+}
+
+void PointcloudViz::initializeTransforms(){
+    //i am using json lib from nlohmann
+    
+    // Read JSON file
+    std::ifstream i("../config/pose_est.json");
+    json j;
+    i >> j;
+
+    // Iterate through JSON object
+    for (auto& item : j.items()) {
+        // Get rotation matrix
+        Eigen::Matrix3f R;
+        const json& R_json = item.value()["R"];
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                R(i, j) = R_json[i][j];
+            }
+        }
+
+        // Get translation vector
+        Eigen::Vector3f t;
+        const json& t_json = item.value()["t"];
+        for (int i = 0; i < 3; i++) {
+            t(i) = t_json[i];
+        }
+
+        // Create transformation matrix
+        Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+        transform.block<3, 3>(0, 0) = R;
+        transform.block<3, 1>(0, 3) = t;
+
+        // Add transformation matrix to vector
+        transforms.push_back(transform);
+    }
 }
 
 
@@ -374,9 +414,9 @@ inline void PointcloudViz::drawPointCloud()
             OPENNI_CHECK(openni::CoordinateConverter::convertDepthToWorld(*depthStreamsList[i], static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), &wx, &wy, &wz));
 
             // Set Point XYZ coordinates
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx ;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy ;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz ;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz / 1000.0f;
 
             // Retrieve Color
             const uint8_t* color_ptr = &color[(y * depth_frames[i].getWidth() + x) * 3];
@@ -404,9 +444,7 @@ void PointcloudViz::show()
     {
         // Show Point Cloud
         showPointCloud();
-    }
-    
-    
+    }    
 
 }
 
@@ -421,11 +459,22 @@ inline void PointcloudViz::showPointCloud()
     //printf("accessing pcloulist\n");
     // merge all point clouds in pcloudlist
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr merged_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
     for (int i = 0; i < pcloudList.size(); i++)
     {
-        //print size
-        std::cout << "Size of point cloud " << i << ": " << pcloudList[i]->points.size() << std::endl;
-        *merged_cloud += *pcloudList[i];
+
+        if (i == 0) {
+            *merged_cloud = *pcloudList[i];
+            continue;
+        }
+
+        // transofmr 
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::transformPointCloud(*pcloudList[i], *transformed_cloud, transforms[i - 1]);
+
+        //merge the point cloud
+        *merged_cloud += *transformed_cloud;
+
     }
     //printf("finished merging pcls");
 

@@ -38,6 +38,8 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 
 
+
+
 # Add executable
 add_executable(OpenNI2_OpenCV src/main.cpp src/pointcloudviz.cpp)
 
