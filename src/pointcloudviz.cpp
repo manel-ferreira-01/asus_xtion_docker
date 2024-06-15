@@ -2,7 +2,7 @@
 
 
 #define DISPLAY_POINTCLOUD true
-#define DISPLAY_COLOR false
+#define DISPLAY_COLOR true
 
 // Constructor
 PointcloudViz::PointcloudViz()
@@ -14,6 +14,8 @@ PointcloudViz::PointcloudViz()
 // Destructor
 PointcloudViz::~PointcloudViz()
 {
+
+    viewer->close();
 
     //terminate viewer thread
     viewer_thread->interrupt();
@@ -44,7 +46,7 @@ void PointcloudViz::run()
         // Key Check
         const int32_t key = cv::waitKey( 10 );
         if( key == 'q' ){
-            break;
+            delete this;
         }
 
         if( key == 's' ){
@@ -67,8 +69,8 @@ void PointcloudViz::run()
             // save pcloudList as various pcd files
             for (int i = 0; i < pcloudList.size(); i++)
             {
-                //pcl::io::savePCDFileASCII("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
-                //std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
+                pcl::io::savePCDFileASCII("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
+                std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
             }
 
         }
@@ -238,7 +240,7 @@ void PointcloudViz::initializeTransforms(){
     //i am using json lib from nlohmann
     
     // Read JSON file
-    std::ifstream i("../config/pose_est.json");
+    std::ifstream i("../config/pose_est.json"); //TODO: use relative path
     json j;
     i >> j;
 
@@ -357,13 +359,6 @@ inline void PointcloudViz::drawColor()
 
         colorMatList.push_back(color_mat);
 
-        if (DISPLAY_COLOR){
-
-            cv::namedWindow("Color " + std::to_string(i));
-            cv::imshow("Color " + std::to_string(i), color_mat);
-
-        }
-
     }
 
 
@@ -446,6 +441,23 @@ void PointcloudViz::show()
         showPointCloud();
     }    
 
+    if (DISPLAY_COLOR){
+
+        // Show Color
+        showColor();
+        
+    }
+
+}
+
+//Show Color
+inline void PointcloudViz::showColor()
+{
+    for (int i = 0; i < colorMatList.size(); i++)
+    {
+        cv::namedWindow("Color " + std::to_string(i));
+        cv::imshow("Color " + std::to_string(i), colorMatList[i]);
+    }
 }
 
 // Show Point Cloud

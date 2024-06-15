@@ -99,6 +99,9 @@ private:
     // Show Point Cloud
     inline void showPointCloud();
 
+    // Show Color
+    inline void showColor();
+
     //show sensor data
     void showSensorData(const openni::Array< openni::VideoMode>& modesDepth);
 
