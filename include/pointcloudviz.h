@@ -29,7 +29,6 @@ private:
     // Point Cloud viewer and data
     pcl::visualization::PCLVisualizer::Ptr viewer;
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcloudList;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr to_show;
 
     // thread
     boost::thread* viewer_thread;
@@ -90,6 +89,8 @@ private:
 
     //show sensor data
     void showSensorData(const openni::Array< openni::VideoMode>& modesDepth);
+
+
 };
 
 #endif // POINTCLOUDVIZ_HPP

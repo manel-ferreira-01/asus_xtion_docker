@@ -1,9 +1,8 @@
 #include "pointcloudviz.h"
 
 
-
-
-#define DISPLAY_POINTCLOUD false
+#define DISPLAY_POINTCLOUD true
+#define DISPLAY_COLOR false
 
 // Constructor
 PointcloudViz::PointcloudViz()
@@ -16,19 +15,13 @@ PointcloudViz::PointcloudViz()
 PointcloudViz::~PointcloudViz()
 {
 
-    if (viewer_thread && viewer_thread->joinable()) {
-        viewer->close();
-        viewer_thread->join();
-    }
-    delete viewer_thread;
+    //terminate viewer thread
+    viewer_thread->interrupt();
+    viewer_thread->join();
+    
 
     cv::destroyAllWindows();
 
-    // Clean up OpenNI
-    for (auto &device : deviceList) {
-        device->close();
-        delete device;
-    }
     openni::OpenNI::shutdown();
 
 
@@ -237,6 +230,7 @@ inline void PointcloudViz::initializeColor()
 
 }
 
+
 // Initialize Point Cloud
 inline void PointcloudViz::initializeViewer()
 {
@@ -249,9 +243,15 @@ inline void PointcloudViz::initializeViewer()
     viewer_launched_flag = 1;
 
     while (!viewer->wasStopped()) {
-        viewer->spinOnce(10);
-        boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+        viewer->spinOnce();
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
     }
+
+    //close viewer
+    viewer->close();
+
+    //destroy this object pointcloudviz
+    delete this;
 
 }
 
@@ -317,7 +317,7 @@ inline void PointcloudViz::drawColor()
 
         colorMatList.push_back(color_mat);
 
-        if (true){
+        if (DISPLAY_COLOR){
 
             cv::namedWindow("Color " + std::to_string(i));
             cv::imshow("Color " + std::to_string(i), color_mat);
@@ -334,6 +334,7 @@ inline void PointcloudViz::drawColor()
 inline void PointcloudViz::drawPointCloud()
 {
 
+    //printf("started drawing point cloud\n");
     pcloudList.clear();
     for (int i = 0; i < depth_frames.size(); i++)
     {    
@@ -373,9 +374,9 @@ inline void PointcloudViz::drawPointCloud()
             OPENNI_CHECK(openni::CoordinateConverter::convertDepthToWorld(*depthStreamsList[i], static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), &wx, &wy, &wz));
 
             // Set Point XYZ coordinates
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx / 1000.0f;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy / 1000.0f;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx ;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy ;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz ;
 
             // Retrieve Color
             const uint8_t* color_ptr = &color[(y * depth_frames[i].getWidth() + x) * 3];
@@ -391,6 +392,9 @@ inline void PointcloudViz::drawPointCloud()
         // Add the pcl::PointCloud to the pcloudList
         pcloudList.push_back(pcl_cloud);
     }
+
+    //printf("finished drawing point cloud\n");
+
 }
 
 // Show Data
@@ -414,13 +418,25 @@ inline void PointcloudViz::showPointCloud()
         return;
     }
 
+    //printf("accessing pcloulist\n");
+    // merge all point clouds in pcloudlist
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr merged_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (int i = 0; i < pcloudList.size(); i++)
+    {
+        //print size
+        std::cout << "Size of point cloud " << i << ": " << pcloudList[i]->points.size() << std::endl;
+        *merged_cloud += *pcloudList[i];
+    }
+    //printf("finished merging pcls");
 
     // Update Point Cloud
-    if (!viewer->updatePointCloud(pcloudList[0], "cloud"))
+    if (!viewer->updatePointCloud(merged_cloud, "cloud"))
     {
-        viewer->addPointCloud(pcloudList[0], "cloud");
+        viewer->addPointCloud(merged_cloud, "cloud");
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
     }
+
+    //printf("accessed pcloulist\n");
 
 }
 
