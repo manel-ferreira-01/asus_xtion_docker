@@ -79,8 +79,8 @@ void PointcloudViz::run()
             for (int i = 0; i < pcloudList.size(); i++)
             {
                 //TODO: save in binary to be faster
-                //pcl::io::savePCD("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
-                //std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
+                pcl::io::savePCDFile("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
+                std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
             }
 
         }
@@ -182,7 +182,7 @@ inline void PointcloudViz::initializeDepth()
             for (int j = 0; j < modesDepth.getSize(); j++)
             {
                 if (modesDepth[j].getResolutionX() == 320 && modesDepth[j].getResolutionY() == 240 &&
-                    modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_100_UM)
+                    modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_1_MM)
                 {
                     mode = j;
                     break;
