@@ -1,7 +1,7 @@
 #include "pointcloudviz.h"
 
 
-#define DISPLAY_POINTCLOUD true
+#define DISPLAY_POINTCLOUD false
 #define DISPLAY_COLOR true
 
 // Constructor
@@ -57,20 +57,30 @@ void PointcloudViz::run()
                 time_t now = time(0);
                 tm *ltm = localtime(&now);
 
-                std::string filename = "color" + std::to_string(i) + "_" + std::to_string(1900 + ltm->tm_year) + 
+                /* std::string filename = "color" + std::to_string(i) + "_" + std::to_string(1900 + ltm->tm_year) + 
                  "_" + std::to_string(1 + ltm->tm_mon) + "_" + std::to_string(ltm->tm_mday) + 
                   "_" + std::to_string(ltm->tm_hour) + "_" + std::to_string(ltm->tm_min) + 
-                   "_" + std::to_string(ltm->tm_sec) + ".png";
+                   "_" + std::to_string(ltm->tm_sec) + ".png"; */
+                
+                // save image to a folder namesd im_counter and create the folder if needed
+                
+                std::string command = "mkdir " + std::to_string(im_counter);
+                system(command.c_str());
+                
+                std::string filename = std::to_string(im_counter) + "/" + std::to_string(i) + ".png";                
 
                 cv::imwrite(filename, colorMatList[i]);
 
             }
 
+            im_counter += 1;
+
             // save pcloudList as various pcd files
             for (int i = 0; i < pcloudList.size(); i++)
             {
-                pcl::io::savePCDFileASCII("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
-                std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
+                //TODO: save in binary to be faster
+                //pcl::io::savePCD("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
+                //std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
             }
 
         }
@@ -93,7 +103,7 @@ void PointcloudViz::initialize()
     initializeColor();
 
     // Initialize Depth
-    initializeDepth();
+    //initializeDepth();
     
     //initialize transforms
     initializeTransforms();
@@ -305,7 +315,7 @@ void PointcloudViz::update()
     updateColor();
 
     // Update Depth
-    updateDepth();
+    //updateDepth();
 
 }
 
@@ -341,7 +351,7 @@ void PointcloudViz::draw()
     drawColor();
 
     // Draw Point Cloud
-    drawPointCloud();
+    //drawPointCloud();
 }
 
 // Draw Color
@@ -445,7 +455,7 @@ void PointcloudViz::show()
 
         // Show Color
         showColor();
-        
+
     }
 
 }

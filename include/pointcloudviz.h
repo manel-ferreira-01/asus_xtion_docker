@@ -43,6 +43,9 @@ private:
     // TFs
     std::vector<Eigen::Matrix4f> transforms;
 
+    // im_counter
+    int im_counter = 0;
+
 public:
     // Constructor
     PointcloudViz();
