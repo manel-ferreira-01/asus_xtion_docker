@@ -1,7 +1,7 @@
 #include "pointcloudviz.h"
 
 
-#define DISPLAY_POINTCLOUD false
+#define DISPLAY_POINTCLOUD true
 #define DISPLAY_COLOR true
 
 // Constructor
@@ -103,7 +103,7 @@ void PointcloudViz::initialize()
     initializeColor();
 
     // Initialize Depth
-    //initializeDepth();
+    initializeDepth();
     
     //initialize transforms
     initializeTransforms();
@@ -181,7 +181,7 @@ inline void PointcloudViz::initializeDepth()
             // go through modes and select the 480p
             for (int j = 0; j < modesDepth.getSize(); j++)
             {
-                if (modesDepth[j].getResolutionX() == 640 && modesDepth[j].getResolutionY() == 480 &&
+                if (modesDepth[j].getResolutionX() == 320 && modesDepth[j].getResolutionY() == 240 &&
                     modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_100_UM)
                 {
                     mode = j;
@@ -315,7 +315,7 @@ void PointcloudViz::update()
     updateColor();
 
     // Update Depth
-    //updateDepth();
+    updateDepth();
 
 }
 
@@ -351,7 +351,7 @@ void PointcloudViz::draw()
     drawColor();
 
     // Draw Point Cloud
-    //drawPointCloud();
+    drawPointCloud();
 }
 
 // Draw Color
@@ -423,8 +423,9 @@ inline void PointcloudViz::drawPointCloud()
             pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy / 1000.0f;
             pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz / 1000.0f;
 
-            // Retrieve Color
-            const uint8_t* color_ptr = &color[(y * depth_frames[i].getWidth() + x) * 3];
+            // Retrieve Color TODO:FIX FIX FIX FIX
+            const uint8_t* color_ptr = &color[(y*2 * depth_frames[i].getWidth()*2 + x*2) * 3];
+            //FIX FIX FIX
             
             // Set Point RGB color
             pcl_cloud->points[y * depth_frames[i].getWidth() + x].r = color_ptr[2];
