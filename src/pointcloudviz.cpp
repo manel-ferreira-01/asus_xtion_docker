@@ -1,7 +1,6 @@
 #include "pointcloudviz.h"
 
-
-#define DISPLAY_POINTCLOUD true
+#define DISPLAY_POINTCLOUD false
 #define DISPLAY_COLOR true
 
 // Constructor
@@ -100,10 +99,13 @@ void PointcloudViz::initialize()
     initializeDevice();
 
     // Initialize Color
-    initializeColor();
+    // initializeColor();
 
     // Initialize Depth
-    initializeDepth();
+    // initializeDepth();
+
+    initializeStream(openni::SENSOR_DEPTH, openni::PIXEL_FORMAT_DEPTH_1_MM, 640, 480);
+    initializeStream(openni::SENSOR_COLOR, openni::PIXEL_FORMAT_RGB888, 640, 480);
     
     //initialize transforms
     initializeTransforms();
@@ -155,79 +157,32 @@ inline void PointcloudViz::initializeDevice()
     printf("opened all devices\n");
 }
 
-// Initialize Depth
-inline void PointcloudViz::initializeDepth()
+inline void PointcloudViz::initializeStream(openni::SensorType enumSensorType, openni::PixelFormat enumPixelFormat,
+                                            int resolutionX, int resolutionY)
 {
-
-
     for (int i = 0; i < deviceList.size(); i++)
     {
 
-        const openni::SensorInfo* sinfo = deviceList[i]->getSensorInfo(openni::SENSOR_DEPTH); 
-        const openni::Array< openni::VideoMode>& modesDepth = sinfo->getSupportedVideoModes();
+        const openni::SensorInfo* sinfo = deviceList[i]->getSensorInfo(enumSensorType); 
+        const openni::Array< openni::VideoMode>& modesStream = sinfo->getSupportedVideoModes();
 
         // Create Stream
-        openni::VideoStream* depth_stream = new openni::VideoStream;
-        OPENNI_CHECK( depth_stream->create( *deviceList[i], openni::SENSOR_DEPTH ) );
+        openni::VideoStream* stream = new openni::VideoStream;
+        OPENNI_CHECK( stream->create( *deviceList[i], enumSensorType ) );
 
         int mode;
         // Set Video Mode
         if (false){
-            showSensorData(modesDepth);
-            std::cout << "Select Depth Mode: ";
-            std::cin >> mode;
-        } else {
-
-            // go through modes and select the 480p
-            for (int j = 0; j < modesDepth.getSize(); j++)
-            {
-                if (modesDepth[j].getResolutionX() == 320 && modesDepth[j].getResolutionY() == 240 &&
-                    modesDepth[j].getPixelFormat() == openni::PIXEL_FORMAT_DEPTH_1_MM)
-                {
-                    mode = j;
-                    break;
-                }
-            }
-
-        }
-
-        OPENNI_CHECK( depth_stream->setVideoMode( modesDepth[mode] ) );
-
-        // Start Stream
-        OPENNI_CHECK( depth_stream->start() );
-
-        depthStreamsList.push_back(depth_stream);
-
-    }
-    
-}
-
-// Initialize Color
-inline void PointcloudViz::initializeColor()
-{
-
-    for (int i = 0; i < deviceList.size(); i++)
-    {
-
-        const openni::SensorInfo* sinfo = deviceList[i]->getSensorInfo(openni::SENSOR_COLOR); 
-        const openni::Array< openni::VideoMode>& modesColor = sinfo->getSupportedVideoModes();
-
-        // Create Stream
-        openni::VideoStream* color_stream = new openni::VideoStream;
-        OPENNI_CHECK( color_stream->create( *deviceList[i], openni::SENSOR_COLOR ) );
-
-        int mode;
-        // Set Video Mode
-        if (false){
-            showSensorData(modesColor);
+            showSensorData(modesStream);
             std::cout << "Select color Mode: ";
             std::cin >> mode;
         } else {
             // go through modes and select the 480p
-            for (int j = 0; j < modesColor.getSize(); j++)
+            for (int j = 0; j < modesStream.getSize(); j++)
             {
-                if (modesColor[j].getResolutionX() == 640 && modesColor[j].getResolutionY() == 480 &&
-                    modesColor[j].getPixelFormat() == openni::PIXEL_FORMAT_RGB888)
+                if (modesStream[j].getResolutionX() == resolutionX &&
+                    modesStream[j].getResolutionY() == resolutionY &&
+                    modesStream[j].getPixelFormat() == enumPixelFormat)
                 {
                     mode = j;
                     break;
@@ -235,15 +190,22 @@ inline void PointcloudViz::initializeColor()
             }
         }
 
-        OPENNI_CHECK( color_stream->setVideoMode( modesColor[mode] ) );
+        OPENNI_CHECK( stream->setVideoMode( modesStream[mode] ) );
 
         // Start Stream
-        OPENNI_CHECK( color_stream->start() );
+        OPENNI_CHECK( stream->start() );
 
-        colorStreamsList.push_back(color_stream);
+        
+        if (enumSensorType == openni::SENSOR_DEPTH)
+        {
+            depthStreamsList.push_back(stream);
+        }
+        else if (enumSensorType == openni::SENSOR_COLOR)
+        {
+            colorStreamsList.push_back(stream);
+        }       
 
     }
-
 }
 
 void PointcloudViz::initializeTransforms(){

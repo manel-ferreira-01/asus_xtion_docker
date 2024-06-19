@@ -64,10 +64,14 @@ private:
     inline void initializeDevice();
 
     // Initialize Depth
-    inline void initializeDepth();
+    // inline void initializeDepth();
 
     // Initialize Color
-    inline void initializeColor();
+    // inline void initializeColor();
+
+    // Initialize Stream
+    inline void initializeStream(openni::SensorType enumSensorType, openni::PixelFormat enumPixelFormat,
+                                int resolutionX, int resolutionY);
 
     // Initialize Point Cloud
     inline void initializeViewer();
