@@ -365,6 +365,9 @@ inline void PointcloudViz::drawColor()
         cv::Mat color_mat = cv::Mat( color_frames[i].getHeight() , color_frames[i].getWidth(), CV_8UC3,
          const_cast<void*>( color_frames[i].getData() ) );
 
+        //flip image vertically
+        cv::flip(color_mat, color_mat, 1);
+
         cv::cvtColor( color_mat, color_mat, cv::COLOR_RGB2BGR );
 
         colorMatList.push_back(color_mat);
