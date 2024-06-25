@@ -42,6 +42,8 @@ private:
 
     // TFs
     std::vector<Eigen::Matrix4f> transforms;
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcTFormList;
+
 
     // im_counter
     int im_counter = 0;

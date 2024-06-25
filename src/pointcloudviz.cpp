@@ -21,7 +21,6 @@ PointcloudViz::~PointcloudViz()
     viewer_thread->interrupt();
     viewer_thread->join();
     
-
     cv::destroyAllWindows();
 
     openni::OpenNI::shutdown();
@@ -76,11 +75,11 @@ void PointcloudViz::run()
             im_counter += 1;
 
             // save pcloudList as various pcd files
-            for (int i = 0; i < pcloudList.size(); i++)
+            for (int i = 0; i < pcTFormList.size(); i++)
             {
                 //TODO: save in binary to be faster
-                pcl::io::savePCDFile("pointcloud" + std::to_string(i) + ".pcd", *pcloudList[i]);
-                std::cout << "Saved " << pcloudList[i]->points.size() << " data points to " << std::endl;            
+                pcl::io::savePCDFile("pointcloud" + std::to_string(i) + ".pcd", *pcTFormList[i]);
+                std::cout << "Saved " << pcTFormList[i]->points.size() << " data points to " << std::endl;            
             }
 
         }
@@ -280,6 +279,8 @@ void PointcloudViz::initializeTransforms(){
         // Add transformation matrix to vector
         transforms.push_back(transform);
     }
+
+    std::cout << "Transforms: "  << transforms[0] << std::endl;
 }
 
 
@@ -289,7 +290,7 @@ inline void PointcloudViz::initializeViewer()
     
     viewer = pcl::visualization::PCLVisualizer::Ptr(new pcl::visualization::PCLVisualizer("Point Cloud Viewer"));
     viewer->setBackgroundColor(0,0,0);
-    viewer->addCoordinateSystem(10);
+    viewer->addCoordinateSystem(1);
     viewer->initCameraParameters();
 
     viewer_launched_flag = 1;
@@ -327,8 +328,8 @@ inline void PointcloudViz::updateColor()
     {
         // Update Frame
         OPENNI_CHECK( colorStreamsList[i]->readFrame( &color_frames[i] ) );
-    } 
-    
+    }
+
 }
 
 // Update Depth
@@ -366,16 +367,22 @@ inline void PointcloudViz::drawColor()
          const_cast<void*>( color_frames[i].getData() ) );
 
         //flip image vertically
-        cv::flip(color_mat, color_mat, 1);
+        cv::Mat flipped_color_mat;
+        cv::flip(color_mat, flipped_color_mat, 1);
 
-        cv::cvtColor( color_mat, color_mat, cv::COLOR_RGB2BGR );
+        cv::cvtColor( flipped_color_mat, flipped_color_mat, cv::COLOR_RGB2BGR );
 
-        colorMatList.push_back(color_mat);
+        colorMatList.push_back(flipped_color_mat);
 
+    std::string command = "mkdir " + std::to_string(im_counter);
+    system(command.c_str());
+    
+    std::string filename = std::to_string(im_counter) + "/" + std::to_string(i) + ".png";                
+
+    cv::imwrite(filename, colorMatList[i]);
     }
 
-
-    
+    im_counter += 1;
 }
 
 // Draw Point Cloud
@@ -422,8 +429,8 @@ inline void PointcloudViz::drawPointCloud()
             OPENNI_CHECK(openni::CoordinateConverter::convertDepthToWorld(*depthStreamsList[i], static_cast<float>(x), static_cast<float>(y), static_cast<float>(z), &wx, &wy, &wz));
 
             // Set Point XYZ coordinates
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = wx / 1000.0f;
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = wy / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].x = -wx / 1000.0f;
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].y = -wy / 1000.0f;
             pcl_cloud->points[y * depth_frames[i].getWidth() + x].z = wz / 1000.0f;
 
             // Retrieve Color TODO:FIX FIX FIX FIX
@@ -431,9 +438,9 @@ inline void PointcloudViz::drawPointCloud()
             //FIX FIX FIX
             
             // Set Point RGB color
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].r = color_ptr[2];
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].r = color_ptr[0];
             pcl_cloud->points[y * depth_frames[i].getWidth() + x].g = color_ptr[1];
-            pcl_cloud->points[y * depth_frames[i].getWidth() + x].b = color_ptr[0];
+            pcl_cloud->points[y * depth_frames[i].getWidth() + x].b = color_ptr[2];
             
             }
         }
@@ -486,20 +493,18 @@ inline void PointcloudViz::showPointCloud()
     // merge all point clouds in pcloudlist
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr merged_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
+    pcTFormList.clear();
     for (int i = 0; i < pcloudList.size(); i++)
     {
 
-        if (i == 0) {
-            *merged_cloud = *pcloudList[i];
-            continue;
-        }
-
         // transofmr 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::transformPointCloud(*pcloudList[i], *transformed_cloud, transforms[i - 1]);
+        pcl::transformPointCloud(*pcloudList[i], *transformed_cloud, transforms[i]);
 
         //merge the point cloud
         *merged_cloud += *transformed_cloud;
+
+        pcTFormList.push_back(transformed_cloud);
 
     }
     //printf("finished merging pcls");
